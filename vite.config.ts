@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     define: {
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      'process.env.VITE_API_KEY': JSON.stringify(env.VITE_API_KEY),
   
     },
     resolve: {
