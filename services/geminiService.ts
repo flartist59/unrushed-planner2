@@ -4,9 +4,8 @@ import type { Itinerary } from '../types';
 const API_KEY = import.meta.env.VITE_API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-}
+// Now you can use `ai` to generate itineraries
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const systemInstruction = `
 You are 'Layla', a friendly and knowledgeable travel assistant for 'Unrushed Europe'. 
