@@ -1,56 +1,98 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from 'react';
+import { generateItinerary } from './services/geminiService';
+import type { Message, Itinerary } from './types';
+import ChatWindow from './components/ChatWindow';
+import InputBar from './components/InputBar';
+import LoadingSpinner from './components/LoadingSpinner';
 
-export default function TripPlanner() {
-  const [destination, setDestination] = useState("");
-  const [itinerary, setItinerary] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+interface PlanDetails {
+  destination: string;
+  tripLength: string;
+  travelPace: string;
+}
 
-  const generateItinerary = () => {
-    if (!destination) return;
-    setLoading(true);
+const TripPlanner: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'model',
+      content: "Hello! I'm your Unrushed Europe travel assistant. Please fill out the details below to start planning your perfect trip.",
+    },
+  ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    // Simulate AI/planner delay
-    setTimeout(() => {
-      setItinerary([
-        `Day 1: Arrival in ${destination}`,
-        `Day 2: Explore ${destination}`,
-        `Day 3: Relax and enjoy ${destination}`,
+  const handlePlanTrip = useCallback(async (details: PlanDetails) => {
+    setIsLoading(true);
+    setError(null);
+
+    const { destination, tripLength, travelPace } = details;
+    const prompt = `A ${tripLength} trip to ${destination} with a ${travelPace.toLowerCase()} travel pace.`;
+
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: prompt };
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      const itinerary = await generateItinerary(prompt);
+      const modelMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        content: itinerary,
+      };
+      setMessages(prev => [...prev, modelMessage]);
+    } catch (e) {
+      console.error(e);
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+      setError(`Sorry, I couldn't generate an itinerary. ${errorMessage}`);
+      const modelErrorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        content: `I'm sorry, I encountered a problem while planning your trip. Please try rephrasing your request. (Error: ${errorMessage})`,
+      };
+      setMessages(prev => [...prev, modelErrorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleReset = () => {
+    setMessages([
+        {
+          id: '1',
+          role: 'model',
+          content: "Let's plan a new adventure! Where would you like to go on your unrushed European holiday?",
+        },
       ]);
-      setLoading(false);
-    }, 500); // 0.5 second delay
+      setError(null);
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow max-w-xl mx-auto mt-6">
-      <h2 className="text-2xl font-bold mb-4">Your Trip Planner</h2>
-
-      <input
-        type="text"
-        value={destination}
-        onChange={(e) => setDestination(e.target.value)}
-        placeholder="Enter a destination"
-        className="border p-2 rounded w-full mb-4"
-      />
-
-      <button
-        onClick={generateItinerary}
-        className="bg-blue-600 text-white px-4 py-2 rounded mb-4"
-      >
-        Generate Itinerary
-      </button>
-
-      {loading && <p>Planning your trip...</p>}
-
-      {itinerary.length > 0 && (
-        <div className="mt-4">
-          <h3 className="text-xl font-semibold mb-2">Itinerary:</h3>
-          <ul className="list-disc pl-5">
-            {itinerary.map((day, index) => (
-              <li key={index}>{day}</li>
-            ))}
-          </ul>
+    <div className="flex flex-col h-full bg-stone-50 rounded-lg shadow-lg">
+      <header className="bg-white border-b border-stone-200 p-4 shadow-sm">
+        <div className="container mx-auto flex justify-between items-center">
+          <h1 className="text-2xl md:text-3xl font-bold text-teal-800">Unrushed Europe AI Planner</h1>
+           <button 
+             onClick={handleReset} 
+             className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-300 text-sm font-semibold">
+             Start Over
+            </button>
         </div>
-      )}
+      </header>
+      
+      <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="container mx-auto max-w-3xl">
+          <ChatWindow messages={messages} />
+          {isLoading && <LoadingSpinner />}
+        </div>
+      </main>
+
+      <footer className="bg-white border-t border-stone-200 p-4">
+        <div className="container mx-auto max-w-3xl">
+          <InputBar onPlanTrip={handlePlanTrip} isLoading={isLoading} />
+        </div>
+      </footer>
     </div>
   );
-}
+};
+
+export default TripPlanner;
