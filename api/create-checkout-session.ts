@@ -1,7 +1,7 @@
-// api/create-checkout-session.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 
+// Make sure STRIPE_SECRET_KEY is set in Vercel environment variables
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2022-11-15',
 });
@@ -12,39 +12,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { pdfBlob } = req.body;
+    const { pdfContent } = req.body;
 
-    if (!pdfBlob) {
-      return res.status(400).json({ error: 'No PDF content received' });
-    }
-
-    // In a real setup, you could save the PDF to a cloud storage or convert it to a file URL
-    // For simplicity, we just attach it as metadata for now
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'Unrushed Europe Full Itinerary PDF',
-            },
-            unit_amount: 2500, // $25
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: `${req.headers.origin}/?success=true`,
-      cancel_url: `${req.headers.origin}/?canceled=true`,
-      metadata: {
-        pdfContent: pdfBlob,
-      },
-    });
-
-    res.status(200).json({ id: session.id });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-}
+    if (!pdfContent) {
