@@ -1,5 +1,5 @@
 import React from 'react';
-import TripPlanner from "./TripPlanner.tsx";
+import TripPlanner from "./TripPlanner";
 
 export default function App() {
   return (
