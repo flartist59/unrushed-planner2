@@ -15,10 +15,10 @@ const TripPlanner: React.FC = () => {
     },
   ]);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
+  const [blurCutoffDay, setBlurCutoffDay] = useState(2); // e.g., blur after day 1
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Generate itinerary from AI
   const handlePlanTrip = useCallback(async (details: PlanDetails) => {
     setIsLoading(true);
     setError(null);
@@ -66,7 +66,7 @@ const TripPlanner: React.FC = () => {
     setError(null);
   };
 
-  // Stripe checkout for unlocking full itinerary
+  // Stripe checkout
   const handleUnlockItinerary = async () => {
     if (!itinerary) return;
 
@@ -102,6 +102,7 @@ const TripPlanner: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
         <div className="container mx-auto max-w-3xl space-y-6">
+          {/* Destination fields + TypeAssist */}
           <InputBar onPlanTrip={handlePlanTrip} isLoading={isLoading} />
 
           {isLoading && <LoadingSpinner />}
@@ -112,34 +113,38 @@ const TripPlanner: React.FC = () => {
               <p className="italic">{itinerary.summary}</p>
 
               {itinerary.dailyPlan.map(day => (
-                <div key={day.day} className="border p-4 rounded bg-white shadow-sm space-y-2">
+                <div
+                  key={day.day}
+                  className={`border p-4 rounded bg-white shadow-sm space-y-2 ${
+                    day.day >= blurCutoffDay ? 'blur-sm pointer-events-none select-none' : ''
+                  }`}
+                >
                   <h3 className="font-semibold">
                     Day {day.day}: {day.title}
                   </h3>
                   <div>
                     <strong>Morning:</strong> {day.morningActivity.name} — {day.morningActivity.description}
                   </div>
-                  <div className="text-sm text-gray-500 italic">
-                    {day.morningActivity.accessibilityNote}
-                  </div>
+                  <div className="text-sm text-gray-500 italic">{day.morningActivity.accessibilityNote}</div>
                   <div>
                     <strong>Afternoon:</strong> {day.afternoonActivity.name} — {day.afternoonActivity.description}
                   </div>
-                  <div className="text-sm text-gray-500 italic">
-                    {day.afternoonActivity.accessibilityNote}
-                  </div>
+                  <div className="text-sm text-gray-500 italic">{day.afternoonActivity.accessibilityNote}</div>
                   <div>
                     <strong>Evening Suggestion:</strong> {day.eveningSuggestion}
                   </div>
                 </div>
               ))}
 
-              <button
-                onClick={handleUnlockItinerary}
-                className="mt-4 px-6 py-3 bg-yellow-400 text-white font-semibold rounded-lg hover:bg-yellow-500 transition-colors duration-300"
-              >
-                Unlock Full Itinerary
-              </button>
+              {/* Unlock button only if blurred */}
+              {blurCutoffDay <= itinerary.dailyPlan.length && (
+                <button
+                  onClick={handleUnlockItinerary}
+                  className="mt-4 px-6 py-3 bg-yellow-400 text-white font-semibold rounded-lg hover:bg-yellow-500 transition-colors duration-300"
+                >
+                  Unlock Full Itinerary
+                </button>
+              )}
             </div>
           )}
 
