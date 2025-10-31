@@ -21,6 +21,7 @@ const TripPlanner: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullItineraryUnlocked, setFullItineraryUnlocked] = useState(false);
+  const [currentItinerary, setCurrentItinerary] = useState<Itinerary | null>(null);
 
   const handlePlanTrip = useCallback(async (details: PlanDetails) => {
     setIsLoading(true);
@@ -32,11 +33,17 @@ const TripPlanner: React.FC = () => {
 
     try {
       const itinerary = await generateItinerary(prompt);
+      setCurrentItinerary(itinerary);
+
+      const previewItinerary = {
+        ...itinerary,
+        dailyPlan: itinerary.dailyPlan.slice(0, 2), // show first 2 days preview
+      };
 
       const modelMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        content: itinerary,
+        content: previewItinerary,
       };
       setMessages(prev => [...prev, modelMessage]);
     } catch (e) {
@@ -65,10 +72,11 @@ const TripPlanner: React.FC = () => {
     setPlanDetails({ destination: '', tripLength: '', travelPace: '' });
     setError(null);
     setFullItineraryUnlocked(false);
+    setCurrentItinerary(null);
   };
 
   const handleUnlockItinerary = () => {
-    // Placeholder: connect Stripe checkout here
+    // Hook into Stripe checkout here
     setFullItineraryUnlocked(true);
   };
 
@@ -84,17 +92,17 @@ const TripPlanner: React.FC = () => {
             Start Over
           </button>
         </div>
-
-        {/* InputBar goes here so it’s visible below header */}
-        <div className="mt-4">
-          <InputBar
-            onPlanTrip={handlePlanTrip}
-            isLoading={isLoading}
-            details={planDetails}
-            setDetails={setPlanDetails}
-          />
-        </div>
       </header>
+
+      {/* InputBar is visible immediately below the header */}
+      <div className="p-4 md:p-6 bg-white border-b border-stone-200">
+        <InputBar
+          onPlanTrip={handlePlanTrip}
+          isLoading={isLoading}
+          details={planDetails}
+          setDetails={setPlanDetails}
+        />
+      </div>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
         <div className="container mx-auto max-w-3xl space-y-4">
@@ -107,17 +115,27 @@ const TripPlanner: React.FC = () => {
                 <div>
                   <h2 className="text-xl font-bold mb-2">{msg.content.tripTitle}</h2>
                   <p className="mb-2">{msg.content.summary}</p>
-                  {msg.content.dailyPlan.map((day: any) => (
+                  {msg.content.dailyPlan.map((day: any, index: number) => (
                     <div key={day.day} className="mb-4">
                       <h3 className="font-semibold text-teal-700 mb-1">Day {day.day}: {day.title}</h3>
-                      <p><strong>Morning:</strong> {day.morningActivity.name} — {day.morningActivity.description}</p>
+                      <p>
+                        <strong>Morning:</strong> {day.morningActivity.name} — {day.morningActivity.description}
+                      </p>
                       <p><em>Accessibility:</em> {day.morningActivity.accessibilityNote}</p>
-                      <p><strong>Afternoon:</strong> {day.afternoonActivity.name} — {day.afternoonActivity.description}</p>
+                      <p>
+                        <strong>Afternoon:</strong> {day.afternoonActivity.name} — {day.afternoonActivity.description}
+                      </p>
                       <p><em>Accessibility:</em> {day.afternoonActivity.accessibilityNote}</p>
                       <p><strong>Evening:</strong> {day.eveningSuggestion}</p>
+                      {!fullItineraryUnlocked && currentItinerary && index === 1 && (
+                        <div className="mt-2 p-2 bg-gray-100 rounded">
+                          <p className="italic text-gray-600">Unlock the full itinerary to see the remaining days.</p>
+                        </div>
+                      )}
                     </div>
                   ))}
-                  {!fullItineraryUnlocked && (
+
+                  {!fullItineraryUnlocked && currentItinerary && (
                     <button
                       onClick={handleUnlockItinerary}
                       className="mt-2 px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors duration-300"
@@ -131,7 +149,6 @@ const TripPlanner: React.FC = () => {
               )}
             </div>
           ))}
-
           {isLoading && <LoadingSpinner />}
         </div>
       </main>
