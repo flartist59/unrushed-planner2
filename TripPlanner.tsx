@@ -33,3 +33,13 @@ export default function TripPlanner() {
       </button>
 
       <div>
+        {itinerary.length > 0 &&
+          itinerary.map((day, index) => (
+            <p key={index} className="mb-2">
+              {day}
+            </p>
+          ))}
+      </div>
+    </div>
+  );
+}
