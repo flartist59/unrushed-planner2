@@ -1,98 +1,70 @@
-import React, { useState, useCallback } from 'react';
-import { generateItinerary } from './services/geminiService';
-import type { Message, Itinerary } from './types';
-import ChatWindow from './components/ChatWindow';
-import InputBar from './components/InputBar';
-import LoadingSpinner from './components/LoadingSpinner';
+import React from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
 
-interface PlanDetails {
-  destination: string;
-  tripLength: string;
-  travelPace: string;
+// Environment variables (set in Vercel)
+const AI_KEY = import.meta.env.VITE_API_KEY;
+const VIATOR_AFFILIATE_ID = import.meta.env.VITE_VIATOR_ID;   // e.g., "12345"
+const EXPEDIA_AFFILIATE_ID = import.meta.env.VITE_EXPEDIA_ID; // e.g., "1110l14866"
+
+// Initialize AI
+const ai = new GoogleGenAI({ apiKey: AI_KEY });
+
+interface Trip {
+  day: number;
+  title: string;
+  description: string;
+  location?: string;
 }
 
-const TripPlanner: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'model',
-      content: "Hello! I'm your Unrushed Europe travel assistant. Please fill out the details below to start planning your perfect trip.",
-    },
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// Example itinerary data
+const sampleItinerary: Trip[] = [
+  { day: 1, title: "Arrival in Bari", description: "Settle into your hotel and enjoy the coastline." },
+  { day: 2, title: "Polignano a Mare Stroll", description: "Explore the historic town and enjoy local gelato." },
+];
 
-  const handlePlanTrip = useCallback(async (details: PlanDetails) => {
-    setIsLoading(true);
-    setError(null);
+export default function TripPlanner() {
 
-    const { destination, tripLength, travelPace } = details;
-    const prompt = `A ${tripLength} trip to ${destination} with a ${travelPace.toLowerCase()} travel pace.`;
+  // Helper functions to generate affiliate links
+  const getViatorLink = (activity: string) => {
+    const q = encodeURIComponent(activity);
+    return `https://www.viator.com/searchResults/all?affiliateId=${VIATOR_AFFILIATE_ID}&q=${q}`;
+  };
 
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: prompt };
-    setMessages(prev => [...prev, userMessage]);
-
-    try {
-      const itinerary = await generateItinerary(prompt);
-      const modelMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        content: itinerary,
-      };
-      setMessages(prev => [...prev, modelMessage]);
-    } catch (e) {
-      console.error(e);
-      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-      setError(`Sorry, I couldn't generate an itinerary. ${errorMessage}`);
-      const modelErrorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        content: `I'm sorry, I encountered a problem while planning your trip. Please try rephrasing your request. (Error: ${errorMessage})`,
-      };
-      setMessages(prev => [...prev, modelErrorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const handleReset = () => {
-    setMessages([
-        {
-          id: '1',
-          role: 'model',
-          content: "Let's plan a new adventure! Where would you like to go on your unrushed European holiday?",
-        },
-      ]);
-      setError(null);
+  const getExpediaLink = (destination: string) => {
+    const q = encodeURIComponent(destination);
+    return `https://www.expedia.com/Hotel-Search?destination=${q}&affiliateId=${EXPEDIA_AFFILIATE_ID}`;
   };
 
   return (
-    <div className="flex flex-col h-full bg-stone-50 rounded-lg shadow-lg">
-      <header className="bg-white border-b border-stone-200 p-4 shadow-sm">
-        <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl md:text-3xl font-bold text-teal-800">Unrushed Europe AI Planner</h1>
-           <button 
-             onClick={handleReset} 
-             className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-300 text-sm font-semibold">
-             Start Over
-            </button>
-        </div>
-      </header>
-      
-      <main className="flex-1 overflow-y-auto p-4 md:p-6">
-        <div className="container mx-auto max-w-3xl">
-          <ChatWindow messages={messages} />
-          {isLoading && <LoadingSpinner />}
-        </div>
-      </main>
+    <div className="p-6 bg-stone-50 rounded-lg max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4">Your Trip Planner</h2>
 
-      <footer className="bg-white border-t border-stone-200 p-4">
-        <div className="container mx-auto max-w-3xl">
-          <InputBar onPlanTrip={handlePlanTrip} isLoading={isLoading} />
+      {sampleItinerary.map((trip) => (
+        <div key={trip.day} className="mb-6 p-4 bg-white border border-stone-200 rounded-2xl">
+          <h3 className="font-semibold text-lg">Day {trip.day}: {trip.title}</h3>
+          <p className="text-stone-700 my-2">{trip.description}</p>
+
+          {trip.location && (
+            <div className="flex gap-2 mt-2">
+              <a
+                href={getViatorLink(trip.location)}
+                target="_blank"
+                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Viator Activities
+              </a>
+              <a
+                href={getExpediaLink(trip.location)}
+                target="_blank"
+                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Expedia Hotels
+              </a>
+            </div>
+          )}
         </div>
-      </footer>
+      ))}
+
     </div>
   );
-};
-
-export default TripPlanner;
+}
