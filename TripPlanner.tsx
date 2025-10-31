@@ -1,67 +1,52 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { generateItinerary } from './services/geminiService';
-import type { Message, Itinerary, PlanDetails } from './types';
-import ChatWindow from './components/ChatWindow';
-import InputBar from './components/InputBar';
-import LoadingSpinner from './components/LoadingSpinner';
+import type { Itinerary } from './types';
+import jsPDF from 'jspdf';
+
+interface PlanDetails {
+  destination: string;
+  tripLength: string;
+  travelPace: string;
+}
 
 const TripPlanner: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'model',
-      content:
-        "Hello! I'm Layla, your Unrushed Europe travel assistant. Fill out the details below to start planning your perfect trip.",
-    },
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
-  const [locked, setLocked] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
+  const [form, setForm] = useState<PlanDetails>({
+    destination: '',
+    tripLength: '3 days',
+    travelPace: 'Relaxed',
+  });
 
-  const handlePlanTrip = useCallback(
-    async (details: PlanDetails) => {
-      setIsLoading(true);
-      setError(null);
-      setLocked(true);
-      const { destination, tripLength, travelPace } = details;
-      const prompt = `A ${tripLength} trip to ${destination} with a ${travelPace.toLowerCase()} travel pace.`;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-      const userMessage: Message = { id: Date.now().toString(), role: 'user', content: prompt };
-      setMessages((prev) => [...prev, userMessage]);
-
-      try {
-        const newItinerary = await generateItinerary(prompt);
-        setItinerary(newItinerary);
-
-        const modelMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'model',
-          content: `Here's your partial itinerary for ${destination}:`,
-        };
-        setMessages((prev) => [...prev, modelMessage]);
-      } catch (e) {
-        console.error(e);
-        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-        setError(`Failed to generate itinerary: ${errorMessage}`);
-        const modelErrorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'model',
-          content: `I'm sorry, I encountered a problem while planning your trip. Please try again. (Error: ${errorMessage})`,
-        };
-        setMessages((prev) => [...prev, modelErrorMessage]);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
+  const handlePlanTrip = async () => {
+    setLoading(true);
+    setError(null);
+    setUnlocked(false);
+    try {
+      const result = await generateItinerary(
+        `A ${form.tripLength} trip to ${form.destination} with a ${form.travelPace.toLowerCase()} pace.`
+      );
+      setItinerary(result);
+    } catch (err) {
+      setError('Failed to generate itinerary. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUnlock = async () => {
-    // Redirect to Stripe checkout
     if (!itinerary) return;
     try {
-      const pdfBlob = JSON.stringify(itinerary); // send JSON to your backend
+      const pdf = new jsPDF();
+      pdf.text(JSON.stringify(itinerary, null, 2), 10, 10);
+      const pdfBlob = pdf.output('blob');
+
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,89 +54,78 @@ const TripPlanner: React.FC = () => {
       });
       const data = await res.json();
       if (data.id) {
-        window.location.href = `https://checkout.stripe.com/pay/${data.id}`;
+        const stripe = (window as any).Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+        await stripe.redirectToCheckout({ sessionId: data.id });
       }
     } catch (err) {
       console.error(err);
-      setError('Failed to initiate payment. Please try again.');
+      alert('Error creating checkout session.');
     }
   };
 
-  const handleReset = () => {
-    setMessages([
-      {
-        id: '1',
-        role: 'model',
-        content:
-          "Let's plan a new adventure! Where would you like to go on your Unrushed European holiday?",
-      },
-    ]);
-    setError(null);
-    setItinerary(null);
-    setLocked(true);
-  };
-
   return (
-    <div className="flex flex-col h-full bg-stone-50 rounded-lg shadow-lg">
-      <header className="bg-white border-b border-stone-200 p-4 shadow-sm">
-        <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl md:text-3xl font-bold text-teal-800">Unrushed Europe AI Planner</h1>
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-300 text-sm font-semibold"
-          >
-            Start Over
-          </button>
-        </div>
-      </header>
+    <div className="p-4 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Unrushed Europe Trip Planner</h1>
+      <div className="flex flex-col gap-2 mb-4">
+        <input
+          type="text"
+          name="destination"
+          placeholder="Destination"
+          value={form.destination}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
+        <select name="tripLength" value={form.tripLength} onChange={handleChange} className="border p-2 rounded">
+          <option>1 day</option>
+          <option>2 days</option>
+          <option>3 days</option>
+          <option>4 days</option>
+          <option>5 days</option>
+        </select>
+        <select name="travelPace" value={form.travelPace} onChange={handleChange} className="border p-2 rounded">
+          <option>Relaxed</option>
+          <option>Moderate</option>
+          <option>Fast-paced</option>
+        </select>
+        <button onClick={handlePlanTrip} className="bg-teal-600 text-white px-4 py-2 rounded">
+          {loading ? 'Planning...' : 'Plan My Trip'}
+        </button>
+      </div>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-6">
-        <div className="container mx-auto max-w-3xl">
-          <InputBar onPlanTrip={handlePlanTrip} isLoading={isLoading} />
-          {isLoading && <LoadingSpinner />}
-          {error && <div className="text-red-600 mt-4">{error}</div>}
+      {error && <div className="text-red-600">{error}</div>}
 
-          {itinerary && (
-            <div className="mt-6 space-y-4">
-              <h2 className="text-xl font-bold">{itinerary.tripTitle}</h2>
-              <p className="italic">{itinerary.summary}</p>
-
-              {itinerary.dailyPlan.map((day, idx) => (
-                <div
-                  key={day.day}
-                  className={`border rounded p-4 ${locked && idx >= 1 ? 'blur-sm pointer-events-none' : ''}`}
-                >
-                  <h3 className="font-semibold mb-2">
-                    Day {day.day}: {day.title}
-                  </h3>
-                  <div>
-                    <strong>Morning:</strong> {day.morningActivity.name} — {day.morningActivity.description}
-                    <br />
-                    <em>Accessibility:</em> {day.morningActivity.accessibilityNote}
-                  </div>
-                  <div className="mt-2">
-                    <strong>Afternoon:</strong> {day.afternoonActivity.name} — {day.afternoonActivity.description}
-                    <br />
-                    <em>Accessibility:</em> {day.afternoonActivity.accessibilityNote}
-                  </div>
-                  <div className="mt-2">
-                    <strong>Evening Suggestion:</strong> {day.eveningSuggestion}
-                  </div>
-                </div>
-              ))}
-
-              {locked && (
-                <button
-                  onClick={handleUnlock}
-                  className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-300 text-sm font-semibold"
-                >
-                  Unlock Full Itinerary & Get PDF
-                </button>
-              )}
+      {itinerary && (
+        <div className="border p-4 rounded">
+          <h2 className="text-xl font-bold mb-2">{itinerary.tripTitle}</h2>
+          <p className="mb-2">{itinerary.summary}</p>
+          {itinerary.dailyPlan.map((day) => (
+            <div key={day.day} className="mb-3">
+              <h3 className="font-semibold">
+                Day {day.day}: {day.title}
+              </h3>
+              <div className={unlocked ? '' : 'blur-sm'}>
+                <p>
+                  <strong>Morning:</strong> {day.morningActivity.name} - {day.morningActivity.description}
+                </p>
+                <p>
+                  <strong>Afternoon:</strong> {day.afternoonActivity.name} - {day.afternoonActivity.description}
+                </p>
+                <p>
+                  <strong>Evening Suggestion:</strong> {day.eveningSuggestion}
+                </p>
+              </div>
             </div>
+          ))}
+          {!unlocked && (
+            <button
+              onClick={handleUnlock}
+              className="bg-teal-700 text-white px-4 py-2 rounded mt-2"
+            >
+              Unlock Full Itinerary & PDF
+            </button>
           )}
         </div>
-      </main>
+      )}
     </div>
   );
 };
