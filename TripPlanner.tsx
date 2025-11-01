@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { generateItinerary } from './services/geminiService';
 import type { Message, Itinerary, PlanDetails } from './types';
-import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
 import LoadingSpinner from './components/LoadingSpinner';
+import StripeCheckout from './components/StripeCheckout';
+import PDFDownloadButton from './components/PDFGenerator';
 
 const TripPlanner: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -15,13 +16,16 @@ const TripPlanner: React.FC = () => {
     },
   ]);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
-  const [blurCutoffDay, setBlurCutoffDay] = useState(2); // e.g., blur after day 1
+  const [blurCutoffDay, setBlurCutoffDay] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPayment, setShowPayment] = useState(false);
+  const [hasPaid, setHasPaid] = useState(false);
 
   const handlePlanTrip = useCallback(async (details: PlanDetails) => {
     setIsLoading(true);
     setError(null);
+    setHasPaid(false);
 
     const { destination, tripLength, travelPace } = details;
     const prompt = `A ${tripLength} trip to ${destination} with a ${travelPace.toLowerCase()} travel pace.`;
@@ -36,7 +40,7 @@ const TripPlanner: React.FC = () => {
       const modelMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        content: `Your itinerary for ${destination} has been generated! Scroll below to view each day.`,
+        content: `Your itinerary for ${destination} has been generated! Scroll below to view the first day for free.`,
       };
       setMessages(prev => [...prev, modelMessage]);
     } catch (e) {
@@ -64,26 +68,25 @@ const TripPlanner: React.FC = () => {
     ]);
     setItinerary(null);
     setError(null);
+    setShowPayment(false);
+    setHasPaid(false);
   };
 
-  // Stripe checkout
-  const handleUnlockItinerary = async () => {
-    if (!itinerary) return;
+  const handlePaymentSuccess = () => {
+    setHasPaid(true);
+    setShowPayment(false);
+    setBlurCutoffDay(999);
+    
+    const successMessage: Message = {
+      id: Date.now().toString(),
+      role: 'model',
+      content: '🎉 Payment successful! Your complete itinerary is now unlocked. You can download it as a PDF below.',
+    };
+    setMessages(prev => [...prev, successMessage]);
+  };
 
-    try {
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfContent: JSON.stringify(itinerary) }),
-      });
-      const data = await res.json();
-      if (data.id) {
-        const stripe = (window as any).Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-        await stripe.redirectToCheckout({ sessionId: data.id });
-      }
-    } catch (err) {
-      console.error('Stripe checkout error', err);
-    }
+  const handleUnlockItinerary = () => {
+    setShowPayment(true);
   };
 
   return (
@@ -102,53 +105,127 @@ const TripPlanner: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
         <div className="container mx-auto max-w-3xl space-y-6">
-          {/* Destination fields + TypeAssist */}
           <InputBar onPlanTrip={handlePlanTrip} isLoading={isLoading} />
 
           {isLoading && <LoadingSpinner />}
 
+          {showPayment && !hasPaid && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+                <StripeCheckout
+                  amount={1999}
+                  onSuccess={handlePaymentSuccess}
+                  onCancel={() => setShowPayment(false)}
+                />
+              </div>
+            </div>
+          )}
+
           {itinerary && (
             <div className="space-y-4">
-              <h2 className="text-xl font-bold">{itinerary.tripTitle}</h2>
-              <p className="italic">{itinerary.summary}</p>
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h2 className="text-2xl font-bold text-teal-800 mb-2">{itinerary.tripTitle}</h2>
+                <p className="text-stone-600 italic">{itinerary.summary}</p>
+              </div>
+
+              {!hasPaid && blurCutoffDay <= itinerary.dailyPlan.length && (
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 text-2xl">👀</div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-yellow-900 mb-1">Free Preview</h3>
+                      <p className="text-sm text-yellow-800 mb-3">
+                        You're viewing Day 1 for free! Unlock the complete {itinerary.dailyPlan.length}-day itinerary 
+                        with all activities, recommendations, and a downloadable PDF for just $19.99.
+                      </p>
+                      <button
+                        onClick={handleUnlockItinerary}
+                        className="px-6 py-2 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition-colors duration-300 shadow-md"
+                      >
+                        Unlock Full Itinerary - $19.99
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {itinerary.dailyPlan.map(day => (
                 <div
                   key={day.day}
-                  className={`border p-4 rounded bg-white shadow-sm space-y-2 ${
-                    day.day >= blurCutoffDay ? 'blur-sm pointer-events-none select-none' : ''
+                  className={`border border-stone-200 p-5 rounded-lg bg-white shadow-sm space-y-3 transition-all ${
+                    day.day >= blurCutoffDay ? 'blur-sm pointer-events-none select-none relative' : ''
                   }`}
                 >
-                  <h3 className="font-semibold">
+                  {day.day >= blurCutoffDay && (
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <div className="bg-yellow-500 text-white px-6 py-3 rounded-lg font-semibold shadow-lg">
+                        🔒 Unlock to View
+                      </div>
+                    </div>
+                  )}
+                  
+                  <h3 className="text-lg font-bold text-teal-800">
                     Day {day.day}: {day.title}
                   </h3>
-                  <div>
-                    <strong>Morning:</strong> {day.morningActivity.name} — {day.morningActivity.description}
-                  </div>
-                  <div className="text-sm text-gray-500 italic">{day.morningActivity.accessibilityNote}</div>
-                  <div>
-                    <strong>Afternoon:</strong> {day.afternoonActivity.name} — {day.afternoonActivity.description}
-                  </div>
-                  <div className="text-sm text-gray-500 italic">{day.afternoonActivity.accessibilityNote}</div>
-                  <div>
-                    <strong>Evening Suggestion:</strong> {day.eveningSuggestion}
+                  
+                  <div className="space-y-2">
+                    <div className="bg-amber-50 p-3 rounded border-l-4 border-amber-400">
+                      <strong className="text-amber-900">🌅 Morning:</strong>
+                      <p className="mt-1 text-stone-700">
+                        <span className="font-medium">{day.morningActivity.name}</span> — {day.morningActivity.description}
+                      </p>
+                      {day.morningActivity.accessibilityNote && (
+                        <p className="text-xs text-stone-500 italic mt-1">
+                          ♿ {day.morningActivity.accessibilityNote}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="bg-sky-50 p-3 rounded border-l-4 border-sky-400">
+                      <strong className="text-sky-900">☀️ Afternoon:</strong>
+                      <p className="mt-1 text-stone-700">
+                        <span className="font-medium">{day.afternoonActivity.name}</span> — {day.afternoonActivity.description}
+                      </p>
+                      {day.afternoonActivity.accessibilityNote && (
+                        <p className="text-xs text-stone-500 italic mt-1">
+                          ♿ {day.afternoonActivity.accessibilityNote}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="bg-indigo-50 p-3 rounded border-l-4 border-indigo-400">
+                      <strong className="text-indigo-900">🌙 Evening:</strong>
+                      <p className="mt-1 text-stone-700">{day.eveningSuggestion}</p>
+                    </div>
                   </div>
                 </div>
               ))}
 
-              {/* Unlock button only if blurred */}
-              {blurCutoffDay <= itinerary.dailyPlan.length && (
-                <button
-                  onClick={handleUnlockItinerary}
-                  className="mt-4 px-6 py-3 bg-yellow-400 text-white font-semibold rounded-lg hover:bg-yellow-500 transition-colors duration-300"
-                >
-                  Unlock Full Itinerary
-                </button>
+              {hasPaid && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6 text-center">
+                  <h3 className="text-lg font-semibold text-emerald-900 mb-3">
+                    ✅ Your Complete Itinerary is Ready!
+                  </h3>
+                  <p className="text-stone-600 mb-4">
+                    Download your personalized {itinerary.dailyPlan.length}-day European adventure as a PDF.
+                  </p>
+                  <PDFDownloadButton 
+                    itineraryData={{
+                      tripTitle: itinerary.tripTitle,
+                      summary: itinerary.summary,
+                      dailyPlan: itinerary.dailyPlan
+                    }} 
+                  />
+                </div>
               )}
             </div>
           )}
 
-          {error && <div className="text-red-600 font-semibold">{error}</div>}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-700 font-semibold">{error}</p>
+            </div>
+          )}
         </div>
       </main>
     </div>
