@@ -1,6 +1,5 @@
 import React from 'react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 
 interface Activity {
   name: string;
@@ -11,9 +10,9 @@ interface Activity {
 interface DailyPlan {
   day: number;
   title: string;
-  MORNINGActivity: Activity;
-  AFTERNOONActivity: Activity;
-  EVENINGSuggestion: string;
+  morningActivity: Activity;
+  afternoonActivity: Activity;
+  eveningSuggestion: string;
 }
 
 interface ItineraryData {
@@ -25,214 +24,159 @@ interface ItineraryData {
 export function generateItineraryPDF(itineraryData: ItineraryData) {
   const doc = new jsPDF();
   let yPosition = 20;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const maxWidth = pageWidth - (margin * 2);
   
+  // Header
   doc.setFillColor(20, 184, 166);
-  doc.rect(0, 0, 210, 35, 'F');
+  doc.rect(0, 0, pageWidth, 35, 'F');
   
   doc.setFontSize(26);
   doc.setTextColor(255, 255, 255);
-  doc.text('Unrushed Europe', 105, 15, { align: 'center' });
+  doc.text('Unrushed Europe', pageWidth / 2, 15, { align: 'center' });
   
   doc.setFontSize(12);
-  doc.text('Your Personalized Travel Itinerary', 105, 25, { align: 'center' });
+  doc.text('Your Personalized Travel Itinerary', pageWidth / 2, 25, { align: 'center' });
   
   yPosition = 50;
   
-  doc.setFontSize(20);
+  // Title
+  doc.setFontSize(18);
   doc.setTextColor(41, 37, 36);
-  const titleLines = doc.splitTextToSize(itineraryData.tripTitle, 170);
+  const titleLines = doc.splitTextToSize(itineraryData.tripTitle, maxWidth);
   titleLines.forEach((line: string) => {
-    doc.text(line, 105, yPosition, { align: 'center' });
-    yPosition += 8;
+    if (yPosition > pageHeight - 20) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    doc.text(line, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 7;
   });
   
   yPosition += 5;
   
+  // Summary
   doc.setFontSize(11);
   doc.setTextColor(87, 83, 78);
-  const summaryLines = doc.splitTextToSize(itineraryData.summary, 170);
+  const summaryLines = doc.splitTextToSize(itineraryData.summary, maxWidth);
   summaryLines.forEach((line: string) => {
-    if (yPosition > 270) {
+    if (yPosition > pageHeight - 20) {
       doc.addPage();
       yPosition = 20;
     }
-    doc.text(line, 105, yPosition, { align: 'center' });
+    doc.text(line, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 6;
   });
   
   yPosition += 10;
   
+  // Daily itinerary
   itineraryData.dailyPlan.forEach((day) => {
-    if (yPosition > 240) {
+    // Check for new page
+    if (yPosition > pageHeight - 60) {
       doc.addPage();
       yPosition = 20;
     }
     
+    // Day header
     doc.setFillColor(240, 253, 250);
-    doc.roundedRect(15, yPosition - 5, 180, 12, 2, 2, 'F');
+    doc.rect(margin, yPosition - 5, maxWidth, 10, 'F');
     
     doc.setFontSize(14);
     doc.setTextColor(17, 94, 89);
-    doc.setFont(undefined, 'bold');
-    doc.text(`Day ${day.day}: ${day.title}`, 20, yPosition + 3);
-    doc.setFont(undefined, 'normal');
+    doc.text(`Day ${day.day}: ${day.title}`, margin + 5, yPosition + 2);
     
-    yPosition += 15;
+    yPosition += 12;
     
-    doc.setFillColor(254, 243, 199);
-    doc.roundedRect(20, yPosition - 3, 170, 8, 1, 1, 'F');
+    // Morning
     doc.setFontSize(11);
     doc.setTextColor(120, 53, 15);
-    doc.setFont(undefined, 'bold');
-    doc.text('🌅 MORNING', 25, yPosition + 2);
-    doc.setFont(undefined, 'normal');
-    yPosition += 10;
+    doc.text('MORNING', margin + 5, yPosition);
+    yPosition += 7;
     
     doc.setFontSize(10);
     doc.setTextColor(41, 37, 36);
-    doc.setFont(undefined, 'bold');
-    const MORNINGNameLines = doc.splitTextToSize(day.MORNINGActivity.name, 160);
-    MORNINGNameLines.forEach((line: string) => {
-      if (yPosition > 270) {
+    const morningLines = doc.splitTextToSize(`${day.morningActivity.name} - ${day.morningActivity.description}`, maxWidth - 10);
+    morningLines.forEach((line: string) => {
+      if (yPosition > pageHeight - 20) {
         doc.addPage();
         yPosition = 20;
       }
-      doc.text(line, 25, yPosition);
-      yPosition += 5;
-    });
-    doc.setFont(undefined, 'normal');
-    
-    doc.setTextColor(68, 64, 60);
-    const MORNINGDescLines = doc.splitTextToSize(day.MORNINGActivity.description, 160);
-    MORNINGDescLines.forEach((line: string) => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      doc.text(line, 25, yPosition);
+      doc.text(line, margin + 5, yPosition);
       yPosition += 5;
     });
     
-    if (day.MORNINGActivity.accessibilityNote) {
+    if (day.morningActivity.accessibilityNote) {
       doc.setFontSize(8);
       doc.setTextColor(120, 113, 108);
-      const accessLines = doc.splitTextToSize(`♿ ${day.MORNINGActivity.accessibilityNote}`, 160);
-      accessLines.forEach((line: string) => {
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(line, 25, yPosition);
-        yPosition += 4;
-      });
-      doc.setFontSize(10);
+      doc.text(`Accessibility: ${day.morningActivity.accessibilityNote}`, margin + 5, yPosition);
+      yPosition += 5;
     }
     
-    yPosition += 5;
+    yPosition += 3;
     
-    doc.setFillColor(224, 242, 254);
-    doc.roundedRect(20, yPosition - 3, 170, 8, 1, 1, 'F');
+    // Afternoon
     doc.setFontSize(11);
     doc.setTextColor(12, 74, 110);
-    doc.setFont(undefined, 'bold');
-    doc.text('☀️ AFTERNOON', 25, yPosition + 2);
-    doc.setFont(undefined, 'normal');
-    yPosition += 10;
+    doc.text('AFTERNOON', margin + 5, yPosition);
+    yPosition += 7;
     
     doc.setFontSize(10);
     doc.setTextColor(41, 37, 36);
-    doc.setFont(undefined, 'bold');
-    const AFTERNOONNameLines = doc.splitTextToSize(day.AFTERNOONActivity.name, 160);
-    AFTERNOONNameLines.forEach((line: string) => {
-      if (yPosition > 270) {
+    const afternoonLines = doc.splitTextToSize(`${day.afternoonActivity.name} - ${day.afternoonActivity.description}`, maxWidth - 10);
+    afternoonLines.forEach((line: string) => {
+      if (yPosition > pageHeight - 20) {
         doc.addPage();
         yPosition = 20;
       }
-      doc.text(line, 25, yPosition);
-      yPosition += 5;
-    });
-    doc.setFont(undefined, 'normal');
-    
-    doc.setTextColor(68, 64, 60);
-    const AFTERNOONDescLines = doc.splitTextToSize(day.AFTERNOONActivity.description, 160);
-    afternoonDescLines.forEach((line: string) => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      doc.text(line, 25, yPosition);
+      doc.text(line, margin + 5, yPosition);
       yPosition += 5;
     });
     
-    if (day.AFTERNOONActivity.accessibilityNote) {
+    if (day.afternoonActivity.accessibilityNote) {
       doc.setFontSize(8);
       doc.setTextColor(120, 113, 108);
-      const accessLines = doc.splitTextToSize(`♿ ${day.AFTERNOONActivity.accessibilityNote}`, 160);
-      accessLines.forEach((line: string) => {
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(line, 25, yPosition);
-        yPosition += 4;
-      });
-      doc.setFontSize(10);
+      doc.text(`Accessibility: ${day.afternoonActivity.accessibilityNote}`, margin + 5, yPosition);
+      yPosition += 5;
     }
     
-    yPosition += 5;
+    yPosition += 3;
     
-    doc.setFillColor(224, 231, 255);
-    doc.roundedRect(20, yPosition - 3, 170, 8, 1, 1, 'F');
+    // Evening
     doc.setFontSize(11);
     doc.setTextColor(55, 48, 163);
-    doc.setFont(undefined, 'bold');
-    doc.text('🌙 Evening', 25, yPosition + 2);
-    doc.setFont(undefined, 'normal');
-    yPosition += 10;
+    doc.text('EVENING', margin + 5, yPosition);
+    yPosition += 7;
     
     doc.setFontSize(10);
-    doc.setTextColor(68, 64, 60);
-    const eveningLines = doc.splitTextToSize(day.EVENINGSuggestion, 160);
-    EVENINGLines.forEach((line: string) => {
-      if (yPosition > 270) {
+    doc.setTextColor(41, 37, 36);
+    const eveningLines = doc.splitTextToSize(day.eveningSuggestion, maxWidth - 10);
+    eveningLines.forEach((line: string) => {
+      if (yPosition > pageHeight - 20) {
         doc.addPage();
         yPosition = 20;
       }
-      doc.text(line, 25, yPosition);
+      doc.text(line, margin + 5, yPosition);
       yPosition += 5;
     });
     
     yPosition += 10;
   });
   
+  // Footer on all pages
   const pageCount = doc.internal.getNumberOfPages();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(120, 113, 108);
-    
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
-    
-    doc.text(
-      'Created with Unrushed Europe AI Planner',
-      pageWidth / 2,
-      pageHeight - 5,
-      { align: 'center' }
-    );
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+    doc.text('Created with Unrushed Europe AI Planner', pageWidth / 2, pageHeight - 5, { align: 'center' });
   }
   
   const today = new Date().toISOString().split('T')[0];
-  const sanitizedTitle = itineraryData.tripTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-  const filename = `${sanitizedTitle}-${today}.pdf`;
-  
+  const filename = `unrushed-europe-itinerary-${today}.pdf`;
   doc.save(filename);
 }
 
