@@ -11,9 +11,9 @@ interface Activity {
 interface DailyPlan {
   day: number;
   title: string;
-  morningActivity: Activity;
-  afternoonActivity: Activity;
-  eveningSuggestion: string;
+  MORNINGActivity: Activity;
+  AFTERNOONActivity: Activity;
+  EVENINGSuggestion: string;
 }
 
 interface ItineraryData {
@@ -84,15 +84,15 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
     doc.setFontSize(11);
     doc.setTextColor(120, 53, 15);
     doc.setFont(undefined, 'bold');
-    doc.text('🌅 Morning', 25, yPosition + 2);
+    doc.text('🌅 MORNING', 25, yPosition + 2);
     doc.setFont(undefined, 'normal');
     yPosition += 10;
     
     doc.setFontSize(10);
     doc.setTextColor(41, 37, 36);
     doc.setFont(undefined, 'bold');
-    const morningNameLines = doc.splitTextToSize(day.morningActivity.name, 160);
-    morningNameLines.forEach((line: string) => {
+    const MORNINGNameLines = doc.splitTextToSize(day.MORNINGActivity.name, 160);
+    MORNINGNameLines.forEach((line: string) => {
       if (yPosition > 270) {
         doc.addPage();
         yPosition = 20;
@@ -103,8 +103,8 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
     doc.setFont(undefined, 'normal');
     
     doc.setTextColor(68, 64, 60);
-    const morningDescLines = doc.splitTextToSize(day.morningActivity.description, 160);
-    morningDescLines.forEach((line: string) => {
+    const MORNINGDescLines = doc.splitTextToSize(day.MORNINGActivity.description, 160);
+    MORNINGDescLines.forEach((line: string) => {
       if (yPosition > 270) {
         doc.addPage();
         yPosition = 20;
@@ -113,10 +113,10 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
       yPosition += 5;
     });
     
-    if (day.morningActivity.accessibilityNote) {
+    if (day.MORNINGActivity.accessibilityNote) {
       doc.setFontSize(8);
       doc.setTextColor(120, 113, 108);
-      const accessLines = doc.splitTextToSize(`♿ ${day.morningActivity.accessibilityNote}`, 160);
+      const accessLines = doc.splitTextToSize(`♿ ${day.MORNINGActivity.accessibilityNote}`, 160);
       accessLines.forEach((line: string) => {
         if (yPosition > 270) {
           doc.addPage();
@@ -135,15 +135,15 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
     doc.setFontSize(11);
     doc.setTextColor(12, 74, 110);
     doc.setFont(undefined, 'bold');
-    doc.text('☀️ Afternoon', 25, yPosition + 2);
+    doc.text('☀️ AFTERNOON', 25, yPosition + 2);
     doc.setFont(undefined, 'normal');
     yPosition += 10;
     
     doc.setFontSize(10);
     doc.setTextColor(41, 37, 36);
     doc.setFont(undefined, 'bold');
-    const afternoonNameLines = doc.splitTextToSize(day.afternoonActivity.name, 160);
-    afternoonNameLines.forEach((line: string) => {
+    const AFTERNOONNameLines = doc.splitTextToSize(day.AFTERNOONActivity.name, 160);
+    AFTERNOONNameLines.forEach((line: string) => {
       if (yPosition > 270) {
         doc.addPage();
         yPosition = 20;
@@ -154,7 +154,7 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
     doc.setFont(undefined, 'normal');
     
     doc.setTextColor(68, 64, 60);
-    const afternoonDescLines = doc.splitTextToSize(day.afternoonActivity.description, 160);
+    const AFTERNOONDescLines = doc.splitTextToSize(day.AFTERNOONActivity.description, 160);
     afternoonDescLines.forEach((line: string) => {
       if (yPosition > 270) {
         doc.addPage();
@@ -164,10 +164,10 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
       yPosition += 5;
     });
     
-    if (day.afternoonActivity.accessibilityNote) {
+    if (day.AFTERNOONActivity.accessibilityNote) {
       doc.setFontSize(8);
       doc.setTextColor(120, 113, 108);
-      const accessLines = doc.splitTextToSize(`♿ ${day.afternoonActivity.accessibilityNote}`, 160);
+      const accessLines = doc.splitTextToSize(`♿ ${day.AFTERNOONActivity.accessibilityNote}`, 160);
       accessLines.forEach((line: string) => {
         if (yPosition > 270) {
           doc.addPage();
@@ -192,8 +192,8 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
     
     doc.setFontSize(10);
     doc.setTextColor(68, 64, 60);
-    const eveningLines = doc.splitTextToSize(day.eveningSuggestion, 160);
-    eveningLines.forEach((line: string) => {
+    const eveningLines = doc.splitTextToSize(day.EVENINGSuggestion, 160);
+    EVENINGLines.forEach((line: string) => {
       if (yPosition > 270) {
         doc.addPage();
         yPosition = 20;
