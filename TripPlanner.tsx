@@ -136,13 +136,13 @@ const TripPlanner: React.FC = () => {
                       <h3 className="font-semibold text-yellow-900 mb-1">Free Preview</h3>
                       <p className="text-sm text-yellow-800 mb-3">
                         You're viewing Day 1 for free! Unlock the complete {itinerary.dailyPlan.length}-day itinerary 
-                        with all activities, recommendations, and a downloadable PDF for just $19.99.
+                        with all activities, recommendations, and a downloadable PDF for just $7.99.
                       </p>
                       <button
                         onClick={handleUnlockItinerary}
                         className="px-6 py-2 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition-colors duration-300 shadow-md"
                       >
-                        Unlock Full Itinerary - $19.99
+                        Unlock Full Itinerary - $7.99
                       </button>
                     </div>
                   </div>
