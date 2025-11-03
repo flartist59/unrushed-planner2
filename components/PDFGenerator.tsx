@@ -28,64 +28,87 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   const maxWidth = pageWidth - (margin * 2);
-  const textLineHeight = 5; // Approximate line height for text wrapping
-  const sectionSpacing = 10; // Spacing between different sections (e.g., summary and daily plan)
-  const activitySpacing = 3; // Spacing between activities within a day
+  const textLineHeight = 5; // A base line height for calculations
+  const sectionSpacing = 10;
+  const activitySpacing = 3;
 
-  // Helper function to add text with wrapping and page breaks
+  // FIX: A more robust helper function for adding wrapped text.
+  // It now calculates the total height of a text block beforehand to handle page breaks more cleanly.
+  // It also leverages the built-in maxWidth property of the .text() function.
   const addWrappedText = (
     text: string,
     x: number,
     y: number,
-    maxWidth: number,
-    fontSize: number,
-    lineHeight: number,
-    align: 'left' | 'center' | 'right' = 'left'
+    options: {
+      maxWidth: number;
+      fontSize: number;
+      lineHeight: number;
+      align?: 'left' | 'center' | 'right';
+      fontStyle?: 'bold' | 'normal';
+      textColor?: [number, number, number];
+    }
   ) => {
-    doc.setFontSize(fontSize);
-    const lines = doc.splitTextToSize(text, maxWidth);
-    let currentY = y;
+    doc.setFontSize(options.fontSize);
+    doc.setFont('helvetica', options.fontStyle || 'normal');
+    if (options.textColor) {
+      doc.setTextColor(options.textColor[0], options.textColor[1], options.textColor[2]);
+    }
 
-    lines.forEach((line: string) => {
-      if (currentY > pageHeight - margin) {
-        doc.addPage();
-        currentY = margin;
-      }
-      doc.text(line, x, currentY, { align });
-      currentY += lineHeight;
+    const lines = doc.splitTextToSize(text, options.maxWidth);
+    const textHeight = lines.length * options.lineHeight;
+
+    // Check if the entire block fits, if not, add a new page
+    if (y + textHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin; // Reset position to the top margin
+    }
+
+    doc.text(text, x, y, {
+      maxWidth: options.maxWidth,
+      align: options.align || 'left',
     });
-    return currentY;
+
+    // Return the new Y position below the added text block
+    return y + textHeight;
   };
+
+  // --- PDF Content Generation ---
 
   // Header
   doc.setFillColor(20, 184, 166);
   doc.rect(0, 0, pageWidth, 35, 'F');
-
   doc.setFontSize(26);
   doc.setTextColor(255, 255, 255);
   doc.text('Unrushed Europe', pageWidth / 2, 15, { align: 'center' });
-
   doc.setFontSize(12);
   doc.text('Your Personalized Travel Itinerary', pageWidth / 2, 25, { align: 'center' });
 
   yPosition = 50;
 
   // Title
-  doc.setFontSize(18);
-  doc.setTextColor(41, 37, 36);
-  yPosition = addWrappedText(itineraryData.tripTitle, pageWidth / 2, yPosition, maxWidth, 18, 7, 'center');
+  yPosition = addWrappedText(itineraryData.tripTitle, pageWidth / 2, yPosition, {
+    maxWidth: maxWidth,
+    fontSize: 18,
+    lineHeight: 7,
+    align: 'center',
+    textColor: [41, 37, 36],
+  });
   yPosition += sectionSpacing / 2;
 
   // Summary
-  doc.setFontSize(11);
-  doc.setTextColor(87, 83, 78);
-  yPosition = addWrappedText(itineraryData.summary, pageWidth / 2, yPosition, maxWidth, 11, 6, 'center');
+  yPosition = addWrappedText(itineraryData.summary, pageWidth / 2, yPosition, {
+    maxWidth: maxWidth,
+    fontSize: 11,
+    lineHeight: 6,
+    align: 'center',
+    textColor: [87, 83, 78],
+  });
   yPosition += sectionSpacing;
 
   // Daily itinerary
   itineraryData.dailyPlan.forEach((day) => {
-    // Check for new page before starting a new day section
-    if (yPosition > pageHeight - (margin + 60)) { // Ensure enough space for day header and at least one activity
+    // Check for new page before starting a new day's section to ensure the header isn't orphaned
+    if (yPosition > pageHeight - 60) { // 60 is an estimate for header + one activity
       doc.addPage();
       yPosition = margin;
     }
@@ -93,93 +116,75 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
     // Day header
     doc.setFillColor(240, 253, 250);
     doc.rect(margin, yPosition - 5, maxWidth, 10, 'F');
-
     doc.setFontSize(14);
     doc.setTextColor(17, 94, 89);
     doc.text(`Day ${day.day}: ${day.title}`, margin + 5, yPosition + 2);
-
     yPosition += 12;
+
+    // FIX: Define coordinates and widths for indented content for clarity and accuracy.
+    const contentX = margin + 5;
+    const contentMaxWidth = maxWidth - 10; // The available width for indented text
 
     // Morning
     doc.setFontSize(11);
     doc.setTextColor(120, 53, 15);
-    doc.text('MORNING', margin + 5, yPosition);
+    doc.text('MORNING', contentX, yPosition);
     yPosition += 7;
 
-    doc.setFontSize(10);
-    doc.setTextColor(41, 37, 36);
-    yPosition = addWrappedText(
-      `${day.morningActivity.name} - ${day.morningActivity.description}`,
-      margin + 5,
-      yPosition,
-      maxWidth - 10, // Indent for activity details
-      10,
-      textLineHeight
-    );
+    yPosition = addWrappedText(`${day.morningActivity.name} - ${day.morningActivity.description}`, contentX, yPosition, {
+      maxWidth: contentMaxWidth,
+      fontSize: 10,
+      lineHeight: textLineHeight,
+      textColor: [41, 37, 36],
+    });
 
     if (day.morningActivity.accessibilityNote) {
-      doc.setFontSize(8);
-      doc.setTextColor(120, 113, 108);
-      yPosition = addWrappedText(
-        `Accessibility: ${day.morningActivity.accessibilityNote}`,
-        margin + 5,
-        yPosition,
-        maxWidth - 10,
-        8,
-        textLineHeight - 1
-      );
+      yPosition = addWrappedText(`Accessibility: ${day.morningActivity.accessibilityNote}`, contentX, yPosition, {
+        maxWidth: contentMaxWidth,
+        fontSize: 8,
+        lineHeight: textLineHeight - 1,
+        textColor: [120, 113, 108],
+      });
     }
     yPosition += activitySpacing;
 
     // Afternoon
     doc.setFontSize(11);
     doc.setTextColor(12, 74, 110);
-    doc.text('AFTERNOON', margin + 5, yPosition);
+    doc.text('AFTERNOON', contentX, yPosition);
     yPosition += 7;
 
-    doc.setFontSize(10);
-    doc.setTextColor(41, 37, 36);
-    yPosition = addWrappedText(
-      `${day.afternoonActivity.name} - ${day.afternoonActivity.description}`,
-      margin + 5,
-      yPosition,
-      maxWidth - 10,
-      10,
-      textLineHeight
-    );
+    yPosition = addWrappedText(`${day.afternoonActivity.name} - ${day.afternoonActivity.description}`, contentX, yPosition, {
+      maxWidth: contentMaxWidth,
+      fontSize: 10,
+      lineHeight: textLineHeight,
+      textColor: [41, 37, 36],
+    });
 
     if (day.afternoonActivity.accessibilityNote) {
-      doc.setFontSize(8);
-      doc.setTextColor(120, 113, 108);
-      yPosition = addWrappedText(
-        `Accessibility: ${day.afternoonActivity.accessibilityNote}`,
-        margin + 5,
-        yPosition,
-        maxWidth - 10,
-        8,
-        textLineHeight - 1
-      );
+      yPosition = addWrappedText(`Accessibility: ${day.afternoonActivity.accessibilityNote}`, contentX, yPosition, {
+        maxWidth: contentMaxWidth,
+        fontSize: 8,
+        lineHeight: textLineHeight - 1,
+        textColor: [120, 113, 108],
+      });
     }
     yPosition += activitySpacing;
 
     // Evening
     doc.setFontSize(11);
     doc.setTextColor(55, 48, 163);
-    doc.text('EVENING', margin + 5, yPosition);
+    doc.text('EVENING', contentX, yPosition);
     yPosition += 7;
 
-    doc.setFontSize(10);
-    doc.setTextColor(41, 37, 36);
-    yPosition = addWrappedText(
-      day.eveningSuggestion,
-      margin + 5,
-      yPosition,
-      maxWidth - 10,
-      10,
-      textLineHeight
-    );
+    yPosition = addWrappedText(day.eveningSuggestion, contentX, yPosition, {
+      maxWidth: contentMaxWidth,
+      fontSize: 10,
+      lineHeight: textLineHeight,
+      textColor: [41, 37, 36],
+    });
 
-    yPosition += sectionSpacing; // Space after each day
+    yPosition += sectionSpacing;
   });
 
   // Footer on all pages
@@ -188,8 +193,8 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(120, 113, 108);
-    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 15, { align: 'center' }); // Adjusted Y
-    doc.text('Created with Unrushed Europe AI Planner', pageWidth / 2, pageHeight - 10, { align: 'center' }); // Adjusted Y
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+    doc.text('Created with Unrushed Europe AI Planner', pageWidth / 2, pageHeight - 10, { align: 'center' });
   }
 
   const today = new Date().toISOString().split('T')[0];
@@ -197,6 +202,7 @@ export function generateItineraryPDF(itineraryData: ItineraryData) {
   doc.save(filename);
 }
 
+// --- React Component (No changes needed here) ---
 interface PDFDownloadButtonProps {
   itineraryData: ItineraryData;
   disabled?: boolean;
@@ -213,7 +219,6 @@ export default function PDFDownloadButton({
       alert('No itinerary available to download');
       return;
     }
-
     try {
       generateItineraryPDF(itineraryData);
     } catch (error) {
