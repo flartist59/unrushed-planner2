@@ -133,7 +133,7 @@ interface StripeCheckoutProps {
 }
 
 export default function StripeCheckout({ 
-  amount = 1999, 
+  amount = 7.99, 
   onSuccess, 
   onCancel 
 }: StripeCheckoutProps) {
@@ -144,7 +144,7 @@ export default function StripeCheckout({
     appearance: {
       theme: 'stripe' as const,
       variables: {
-        colorPrimary: '#059669',
+        colorPrimary: '#207ec0',
       }
     }
   };
