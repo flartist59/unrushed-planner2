@@ -27,14 +27,14 @@ const TripPlanner: React.FC = () => {
     setError(null);
     setHasPaid(false);
 
-    const { destination, tripLength, travelPace } = details;
-    const prompt = `A ${tripLength} trip to ${destination} with a ${travelPace.toLowerCase()} travel pace.`;
+   const { destination, tripLength, travelPace, numberOfTravelers, interests, season, budgetLevel } = details;
+const summaryText = `${tripLength} trip to ${destination} for ${numberOfTravelers} traveler${numberOfTravelers > 1 ? 's' : ''} (${travelPace}, ${season}, ${budgetLevel})`;
 
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: prompt };
-    setMessages(prev => [...prev, userMessage]);
+const userMessage: Message = { id: Date.now().toString(), role: 'user', content: summaryText };
+setMessages(prev => [...prev, userMessage]);
 
-    try {
-      const result = await generateItinerary(prompt);
+try {
+  const result = await generateItinerary(details);
       setItinerary(result);
 
       const modelMessage: Message = {
