@@ -1,27 +1,13 @@
 // App.tsx
 import React from 'react';
 
-// --- Placeholder Data ---
-// In your real application, you would get these values from an
-// authentication hook (e.g., useAuth), context, or state management library.
-// I've added them here so the component can render without errors.
-const loading = false; // Set to true to see the loading message
-const user = { email: 'traveler@example.com' }; // Set to null to see the sign-in message
-const signOut = () => {
-  alert('Signing out!');
-  // Add your actual sign-out logic here
-};
-// --- End of Placeholder Data ---
+function App() {
+  const { user, signOut, loading } = useAuth(); // Use the auth context
 
-
-function App() { // <--- FIXED: Added the required opening curly brace '{'
-
-  // This is the conditional rendering for the loading state.
   if (loading) {
     return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading authentication...</div>;
   }
 
-  // This is the main component return statement.
   return (
     <div className="App">
       <header className="App-header">
@@ -45,7 +31,7 @@ function App() { // <--- FIXED: Added the required opening curly brace '{'
           <p style={{ textAlign: 'center', marginTop: '30px' }}>
             Sign in or create an account to save and manage your itineraries.
           </p>
-          {/* You would typically have a Login/Sign-up component here */}
+          <AuthForm /> {/* Display the AuthForm if no user is logged in */}
         </>
       )}
     </div>
