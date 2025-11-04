@@ -311,10 +311,11 @@ const InputBar: React.FC<InputBarProps> = ({ onPlanTrip, isLoading }) => {
               type="button"
               onClick={() => toggleInterest(option.value)}
               disabled={isLoading || (!interests.includes(option.value) && interests.length >= 5)}
+              style={interests.includes(option.value) ? { color: 'white' } : {}}
               className={`
                 p-3 rounded-lg border-2 transition-all text-sm font-medium
                 ${interests.includes(option.value)
-                  ? 'border-blue-500 bg-blue-500 !text-white'
+                  ? 'border-blue-500 bg-blue-500'
                   : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
                 }
                 ${isLoading || (!interests.includes(option.value) && interests.length >= 5)
@@ -323,7 +324,7 @@ const InputBar: React.FC<InputBarProps> = ({ onPlanTrip, isLoading }) => {
                 }
               `}
             >
-              <div className={`text-sm ${interests.includes(option.value) ? '!text-white' : ''}`}>
+              <div className="text-sm" style={interests.includes(option.value) ? { color: 'white' } : {}}>
                 {option.label.split(' ').slice(1).join(' ')}
               </div>
             </button>
