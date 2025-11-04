@@ -1,6 +1,5 @@
 // App.tsx
 import React from 'react';
-import AuthForm from './AuthForm'; // Import your new AuthForm component
 
 function App() {
   const { user, signOut, loading } = useAuth(); // Use the auth context
@@ -32,7 +31,7 @@ function App() {
           <p style={{ textAlign: 'center', marginTop: '30px' }}>
             Sign in or create an account to save and manage your itineraries.
           </p>
-          <AuthForm /> {/* Display the AuthForm if no user is logged in */}
+        
         </>
       )}
     </div>
