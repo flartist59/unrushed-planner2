@@ -328,7 +328,7 @@ const InputBar: React.FC<InputBarProps> = ({ onPlanTrip, isLoading }) => {
 ))}
         </div>
         {interests.length > 0 && (
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-white mt-2">
             Selected: {interests.length}/5
           </p>
         )}
