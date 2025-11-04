@@ -306,27 +306,26 @@ const InputBar: React.FC<InputBarProps> = ({ onPlanTrip, isLoading }) => {
         </label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {interestOptions.map(option => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => toggleInterest(option.value)}
-              disabled={isLoading || (!interests.includes(option.value) && interests.length >= 5)}
-              className={`
-                p-3 rounded-lg border-2 transition-all text-sm font-medium
-                ${interests.includes(option.value)
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
-                }
-                ${isLoading || (!interests.includes(option.value) && interests.length >= 5)
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'cursor-pointer'
-                }
-              `}
-            >
-              <div className="text-2xl mb-1">{option.icon}</div>
-              <div className="text-xs">{option.label.split(' ').slice(1).join(' ')}</div>
-            </button>
-          ))}
+  <button
+    key={option.value}
+    type="button"
+    onClick={() => toggleInterest(option.value)}
+    disabled={isLoading || (!interests.includes(option.value) && interests.length >= 5)}
+    className={`
+      p-3 rounded-lg border-2 transition-all text-sm font-medium
+      ${interests.includes(option.value)
+        ? 'border-blue-500 bg-blue-500 text-white'
+        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+      }
+      ${isLoading || (!interests.includes(option.value) && interests.length >= 5)
+        ? 'opacity-50 cursor-not-allowed'
+        : 'cursor-pointer'
+      }
+    `}
+  >
+    <div className="text-sm">{option.label.split(' ').slice(1).join(' ')}</div>
+  </button>
+))}
         </div>
         {interests.length > 0 && (
           <p className="text-sm text-gray-600 mt-2">
