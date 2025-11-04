@@ -1,6 +1,5 @@
 // App.tsx
 import React from 'react';
-import './App.css'; // Or your main app CSS
 import AuthForm from './AuthForm'; // Import your new AuthForm component
 import { useAuth } from './AuthContext'; // Import useAuth hook
 
