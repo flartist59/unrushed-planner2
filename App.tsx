@@ -1,7 +1,6 @@
 // App.tsx
 import React from 'react';
 import AuthForm from './AuthForm'; // Import your new AuthForm component
-import { useAuth } from './AuthContext'; // Import useAuth hook
 
 function App() {
   const { user, signOut, loading } = useAuth(); // Use the auth context
